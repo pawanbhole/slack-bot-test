@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+
+<head>
+    <title></title>
+    <style type="text/css">
+        #popupbox {
+            margin: 0;
+            margin-left: 20%;
+            margin-right: 20%;
+            margin-top: 50px;
+            padding-top: 10px;
+            width: 60%;
+            height: 300px;
+            position: absolute;
+            background: #FBFBF0;
+            border: solid #000000 2px;
+            z-index: 9;
+            font-family: arial;
+            visibility: hidden;
+        }
+    </style>
+    <script language="JavaScript" type="text/javascript">
+        function login(showhide) {
+            if (showhide == "show") {
+                document.getElementById('popupbox').style.visibility = "visible";
+                $('#register').show();
+                $('#code').hide();
+                $('#message').hide();
+                $('#codeForm').show();
+                $('#registerMessage').text("");
+                $('#codeMessage').text("");
+            } else if (showhide == "hide") {
+                document.getElementById('popupbox').style.visibility = "hidden";
+            }
+        }
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+
+<body>
+
+    <div id="popupbox">
+        <form id="register">
+            <div>
+                <center><div id="registerMessage" style="color: #ff0000;"></div>
+                </center><br>
+                <center>
+                    Slack Username: <input name="userId" />
+                </center><br>
+
+                <center>Or</center><br>
+                <center></center>
+                <center>
+                    Email: <input name="email" type="email"/>
+                </center>
+                <br>
+                <center>
+                    <input type="submit" name="submit" value="REGISTER" />
+                </center>
+            </div>
+        </form>
+        <form id="code">
+             <center><div id="codeMessage" style="color: #ff0000;"></div>
+            </center><br>
+            <div id="codeForm">
+                <center>
+                    Plese enter 4 digit code sent to your slack user.
+                </center><br>
+                <center>
+                    Code: <input name="code" type="password" size="4" />
+                </center><br>
+                <center>
+                    <input type="submit" name="submit" value="NOTIFY ME" />
+                </center>
+            </div>
+        </form>
+        <form id="message">
+            <div>
+                <center>
+                    Registration successful.
+                </center>
+            </div>
+        </form>
+        <br />
+        <center><a href="javascript:login('hide');">CLOSE</a></center>
+    </div>
+
+    <p>
+        Notify me
+    </p>
+    <p>
+        Registration for notification of slack mention:
+    </p>
+    <p><a href="javascript:login('show');">REGISTER</a></p>
+</body>
+    <script language="JavaScript" type="text/javascript">
+        $('#register').show();
+        $('#code').hide();
+        $('#message').hide();
+        $('#register').submit(function(e){
+            e.preventDefault();
+            $.ajax({
+                url:'/slackbot/notifyme',
+                type:'post',
+                data:$('#register').serialize(),
+                success:function(res){
+                    console.log(res)
+                    if(res.success) {
+                        $('#register').hide();
+                        $('#code').show();
+                    } else {
+                        $('#registerMessage').text(res.status);
+                    }
+                },
+                error:function(res){
+                    console.log(res)
+                    $('#registerMessage').text(res.responseJSON.status);
+                }
+            });
+        });
+        $('#code').submit(function(e){
+            e.preventDefault();
+            $.ajax({
+                url:'/slackbot/notifyme',
+                type:'post',
+                data:$('#register').serialize()+'&'+$('#code').serialize(),
+                success:function(res){
+                    console.log(res)
+                    console.log(res)
+                    if(res.success) {
+                        $('#register').hide();
+                        $('#code').hide();
+                        $('#message').show();
+                    } else {
+                        $('#codeMessage').text(res.status);
+                        if(res.limitExceed) {
+                            $('#codeForm').hide();
+                        }
+                    }
+                },
+                error:function(res){
+                    console.log(res)
+                    $('#registerMessage').text(res.responseJSON.status);
+                }
+            });
+        });
+    </script>
+</html>

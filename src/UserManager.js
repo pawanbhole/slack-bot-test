@@ -1,5 +1,5 @@
 import request from 'request-promise';
-const users = {};
+let users = {};
 const getUserCallInProgress = {};
 const reloadUserCallInProgress = {};
 
@@ -8,6 +8,10 @@ const reloadUserCallInProgress = {};
  */
 export default class UserManager {
 
+
+	constructor(logger) {
+		this.logger = logger;
+	}
 	/*
 	 * this function returns the promise object which resolve to user objct.
 	 *  1) First it checks if user present in cache, if yes then returns the resolved promise with user as resolved value
@@ -32,11 +36,19 @@ export default class UserManager {
 			};
 			const newPromise = new Promise((resolve, reject) => {
 				this._callRest(options).then((response) => {
-					users[userId] = response;
-					resolve(response);
+					const output = JSON.parse(response);
+					if(this.logger.isSillyEnabled()) {
+						this.logger.silly('Output of info api:-' + JSON.stringify(output));
+					}
+					if(output.ok) {
+						users[userId] = output.user;
+						resolve(users[userId]);
 
-					//remove promise from cache as now user object is cached
-					delete getUserCallInProgress[userId];
+						//remove promise from cache as now user object is cached
+						delete getUserCallInProgress[userId];
+					} else {
+						reject(output.error);
+					}
 				}).catch((error) => {
 					reject(error);
 				});
@@ -45,6 +57,122 @@ export default class UserManager {
 			getUserCallInProgress[userId] = newPromise;
 			return newPromise;
 		}
+	}
+
+
+	/*
+	 * this function returns the promise object which resolve to new IM channel objct.
+	 */
+	openIMChannel(userId) {
+		//Calling API to create IM 
+		const options = {
+			url: 'https://slack.com/api/im.open',
+			qs: {
+				token: process.env.apiToken,
+				user: userId
+			}
+		};
+		return new Promise((resolve, reject) => {
+			this._callRest(options).then((response) => {
+				const output = JSON.parse(response);
+				if(this.logger.isSillyEnabled()) {
+					this.logger.silly('Output of im open api:-' + JSON.stringify(output));
+				}
+				if(output.ok) {
+					resolve(output.channel.id);
+				} else {
+					reject(output.error);
+				}
+			}).catch((error) => {
+				reject(error);
+			});
+		});
+	}
+
+
+	/*
+	 * this function  sends the message to the user on specified channel.
+	 */
+	sendMessage(channel, text) {
+		//Calling API to create IM 
+		const options = {
+			url: 'https://slack.com/api/chat.postMessage',
+			qs: {
+				token: process.env.apiToken,
+				channel, 
+				text
+			}
+		};
+		return new Promise((resolve, reject) => {
+			this._callRest(options).then((response) => {
+				const output = JSON.parse(response);
+				if(this.logger.isSillyEnabled()) {
+					this.logger.silly('Output of chat.postMessage api:-' + JSON.stringify(output));
+				}
+				if(output.ok) {
+					resolve(output.message);
+				} else {
+					reject(output.error);
+				}
+			}).catch((error) => {
+				reject(error);
+			});
+		});
+	}
+
+	/*
+	 * this function returns the promise object which resolve to user objct.
+	 *  Also this function always calls slack API https://api.slack.com/methods/users.list and returns the promise
+	 */
+	getAll() {
+		//Calling API to fetch user list
+		const options = {
+			url: 'https://slack.com/api/users.list',
+			qs: {
+				token: process.env.apiToken,
+				limit: 1000000
+			}
+		};
+		return new Promise((resolve, reject) => {
+			this._callRest(options).then((response) => {
+				const output = JSON.parse(response);
+				if(this.logger.isSillyEnabled()) {
+					this.logger.silly('Output of list api:-' + JSON.stringify(output));
+				}
+				if(output.ok) {
+					users = {};
+					for(let index in output.members) {
+						const member = output.members[index];
+						users[member.id] = member;
+					}
+					resolve(output.members);
+				} else {
+					reject(output.error);
+				}
+			}).catch((error) => {
+				reject(error);
+			});
+		});
+	}
+
+	find(userId, email) {
+		return new Promise((resolve, reject) => {
+			this.getAll().then((members) => {
+				if(this.logger.isSillyEnabled()) {
+					this.logger.silly('Finding by userId:'+userId + ' email:'+email+ ' Output of getAll:-' + JSON.stringify(members));
+				}
+				for(let index in members) {
+					const member = members[index];
+					if((userId || email) && (!userId || userId == member.id) && (!email || email == member.profile.email)) {
+						resolve(member);
+						break;
+					}
+				}
+				resolve(null);
+			}).catch((error) => {
+				reject(error);
+			});
+		});
 	}
 
 

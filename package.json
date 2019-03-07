@@ -5,7 +5,8 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/app.js",
-    "build": "mocha --require @babel/register && webpack"
+    "build": "webpack",
+    "test": "mocha --require @babel/register"
   },
   "dependencies": {
     "body-parser": "^1.15.2",
