@@ -13,9 +13,9 @@ Object.defineProperty(Error.prototype, 'toJSON', {
     writable: true
 });
 
-import SlackBot from './SlackBot';
-import Logger from './Logger';
-import I18n from './I18n';
+import SlackBot from './components/SlackBot';
+import Logger from './components/Logger';
+import I18n from './components/I18n';
 
 const logger = new Logger();
 const i18n = new I18n();

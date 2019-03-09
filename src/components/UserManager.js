@@ -1,8 +1,7 @@
 import request from 'request-promise';
-let users = {};
-const getUserCallInProgress = {};
-const reloadUserCallInProgress = {};
-
+let USERS_CACHE = {};
+const GET_USER_CALL_IN_PROGRESS = {};
+const RELOAD_USER_CALL_IN_PROGRESS = {};
 /*
  * Class to ahndle user operations
  */
@@ -19,19 +18,20 @@ export default class UserManager {
 	 *  3) Last if there not even a call in progress then it calls the slack API https://api.slack.com/methods/users.info and returns the promise
 	 */
 	get(userId) {
-		if(users[userId] != null) {
+		if(USERS_CACHE[userId] != null) {
 			//user in cache
-			return Promise.resolve(users[userId]);
-		} else if(getUserCallInProgress[userId]) {
+			return Promise.resolve(USERS_CACHE[userId]);
+		} else if(GET_USER_CALL_IN_PROGRESS[userId]) {
 			//user call in progress
-			return getUserCallInProgress[userId];
+			return GET_USER_CALL_IN_PROGRESS[userId];
 		} else {
 			//Calling API to fetch user info
 			const options = {
 				url: 'https://slack.com/api/users.info',
 				qs: {
 					token: process.env.apiToken,
-					user: userId
+					user: userId,
+					include_locale: true
 				}
 			};
 			const newPromise = new Promise((resolve, reject) => {
@@ -41,11 +41,11 @@ export default class UserManager {
 						this.logger.silly('Output of info api:-' + JSON.stringify(output));
 					}
 					if(output.ok) {
-						users[userId] = output.user;
-						resolve(users[userId]);
+						USERS_CACHE[userId] = output.user;
+						resolve(USERS_CACHE[userId]);
 
 						//remove promise from cache as now user object is cached
-						delete getUserCallInProgress[userId];
+						delete GET_USER_CALL_IN_PROGRESS[userId];
 					} else {
 						reject(output.error);
 					}
@@ -54,70 +54,9 @@ export default class UserManager {
 				});
 			});
 			//put promise in cache so there wont be a duplicate call to API when first call is in progress
-			getUserCallInProgress[userId] = newPromise;
+			GET_USER_CALL_IN_PROGRESS[userId] = newPromise;
 			return newPromise;
 		}
-	}
-
-
-	/*
-	 * this function returns the promise object which resolve to new IM channel objct.
-	 */
-	openIMChannel(userId) {
-		//Calling API to create IM 
-		const options = {
-			url: 'https://slack.com/api/im.open',
-			qs: {
-				token: process.env.apiToken,
-				user: userId
-			}
-		};
-		return new Promise((resolve, reject) => {
-			this._callRest(options).then((response) => {
-				const output = JSON.parse(response);
-				if(this.logger.isSillyEnabled()) {
-					this.logger.silly('Output of im open api:-' + JSON.stringify(output));
-				}
-				if(output.ok) {
-					resolve(output.channel.id);
-				} else {
-					reject(output.error);
-				}
-			}).catch((error) => {
-				reject(error);
-			});
-		});
-	}
-
-
-	/*
-	 * this function  sends the message to the user on specified channel.
-	 */
-	sendMessage(channel, text) {
-		//Calling API to create IM 
-		const options = {
-			url: 'https://slack.com/api/chat.postMessage',
-			qs: {
-				token: process.env.apiToken,
-				channel, 
-				text
-			}
-		};
-		return new Promise((resolve, reject) => {
-			this._callRest(options).then((response) => {
-				const output = JSON.parse(response);
-				if(this.logger.isSillyEnabled()) {
-					this.logger.silly('Output of chat.postMessage api:-' + JSON.stringify(output));
-				}
-				if(output.ok) {
-					resolve(output.message);
-				} else {
-					reject(output.error);
-				}
-			}).catch((error) => {
-				reject(error);
-			});
-		});
 	}
 
 	/*
@@ -140,12 +79,12 @@ export default class UserManager {
 					this.logger.silly('Output of list api:-' + JSON.stringify(output));
 				}
 				if(output.ok) {
-					users = {};
+					USERS_CACHE = {};
 					for(let index in output.members) {
 						const member = output.members[index];
-						users[member.id] = member;
+						USERS_CACHE[member.id] = member;
 					}
-					resolve(output.members);
+					resolve(USERS_CACHE);
 				} else {
 					reject(output.error);
 				}
@@ -157,22 +96,31 @@ export default class UserManager {
 
 	find(userId, email) {
 		return new Promise((resolve, reject) => {
-			this.getAll().then((members) => {
-				if(this.logger.isSillyEnabled()) {
-					this.logger.silly('Finding by userId:'+userId + ' email:'+email+ ' Output of getAll:-' + JSON.stringify(members));
-				}
-				for(let index in members) {
-					const member = members[index];
-					if((userId || email) && (!userId || userId == member.id) && (!email || email == member.profile.email)) {
-						resolve(member);
-						break;
+			let matchedUser = this.findInMap(USERS_CACHE, userId, email);
+			if(matchedUser) {
+				resolve(matchedUser);
+			} else {
+				this.getAll().then((members) => {
+					if(this.logger.isSillyEnabled()) {
+						this.logger.silly('Finding by userId:'+userId + ' email:'+email+ ' Output of getAll:-' + JSON.stringify(members));
 					}
-				}
-				resolve(null);
-			}).catch((error) => {
-				reject(error);
-			});
+					matchedUser = this.findInMap(USERS_CACHE, userId, email);
+					resolve(matchedUser);
+				}).catch((error) => {
+					reject(error);
+				});
+			}
 		});
+	}
+
+	findInMap(userMap, userId, email) {
+		for(let index in userMap) {
+			const member = userMap[index];
+			if((userId || email) && (!userId || userId == member.id) && (!email || email == member.profile.email)) {
+				return member;
+			}
+		}
+		return null;
 	}
 
 
@@ -183,24 +131,24 @@ export default class UserManager {
 	 *. 3) Last to do reaload it just remove the user object from cache adn call the get. 
 	 */
 	reload(userId) {
-		 if(reloadUserCallInProgress[userId]) {
+		 if(RELOAD_USER_CALL_IN_PROGRESS[userId]) {
 			//reload user call in progress
-			return reloadUserCallInProgress[userId];
+			return RELOAD_USER_CALL_IN_PROGRESS[userId];
 		} else {
 			//Calling get to fetch user info
 			const newPromise = new Promise((resolve, reject) => {
 				const doGetCall = () => {
-					delete users[userId];
+					delete USERS_CACHE[userId];
 					this.get(userId).then((user) => {
 						resolve(user);
-						delete reloadUserCallInProgress[userId];
+						delete RELOAD_USER_CALL_IN_PROGRESS[userId];
 					}).catch((error) => {
 						reject(error);
 					});	
 				};
-				if(getUserCallInProgress[userId]) {
+				if(GET_USER_CALL_IN_PROGRESS[userId]) {
 					//user call in progress. So wait for that call to complete then do second get call.
-					getUserCallInProgress[userId].then(() => {
+					GET_USER_CALL_IN_PROGRESS[userId].then(() => {
 						doGetCall();
 					}).catch((error) => {
 						reject(error);
@@ -210,7 +158,7 @@ export default class UserManager {
 				}
 			});
 			//put promise in cache so there wont be a duplicate call to API when first call is in progress
-			reloadUserCallInProgress[userId] = newPromise;
+			RELOAD_USER_CALL_IN_PROGRESS[userId] = newPromise;
 			return newPromise;
 		}
 	}

@@ -1,0 +1,45 @@
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<link href="./style.css" rel="stylesheet" >
+
+<script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+<!------ Include the above in your HEAD tag ---------->
+
+<script src="https://www.gstatic.com/firebasejs/5.5.8/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.5.8/firebase-messaging.js"></script>
+
+<html>
+    <body>
+
+        <div id="id01" class="modal">
+
+          <form class="modal-content animate">
+            <div class="container">
+              <label><b>Pin</b></label>
+              <input type='password' placeholder="Enter pin" name="pin" id= "pin" required>
+              <button type="submit">login</button>
+            </div>
+          </form>
+        </div>
+
+
+        <div class="col-sm-3 frame">
+
+            <button type="button" class="clear">CLEAR</button>
+            <button type="button" class="notify">NOTIFY</button>
+            <ul></ul>
+            <div>
+                <div class="msj-rta macro">
+                    <div class="text text-r" style="background:whitesmoke !important">
+                        <input class="mytext" placeholder="Type a message"/>
+                    </div>
+
+                </div>
+                <div style="padding:10px;">
+                    <span class="glyphicon glyphicon-share-alt"></span>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+<script src="./client.js"></script>

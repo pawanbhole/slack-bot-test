@@ -21,6 +21,8 @@
             visibility: hidden;
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/5.5.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/5.5.8/firebase-messaging.js"></script>
     <script language="JavaScript" type="text/javascript">
         function login(showhide) {
             if (showhide == "show") {
@@ -95,56 +97,5 @@
     </p>
     <p><a href="javascript:login('show');">REGISTER</a></p>
 </body>
-    <script language="JavaScript" type="text/javascript">
-        $('#register').show();
-        $('#code').hide();
-        $('#message').hide();
-        $('#register').submit(function(e){
-            e.preventDefault();
-            $.ajax({
-                url:'/slackbot/notifyme',
-                type:'post',
-                data:$('#register').serialize(),
-                success:function(res){
-                    console.log(res)
-                    if(res.success) {
-                        $('#register').hide();
-                        $('#code').show();
-                    } else {
-                        $('#registerMessage').text(res.status);
-                    }
-                },
-                error:function(res){
-                    console.log(res)
-                    $('#registerMessage').text(res.responseJSON.status);
-                }
-            });
-        });
-        $('#code').submit(function(e){
-            e.preventDefault();
-            $.ajax({
-                url:'/slackbot/notifyme',
-                type:'post',
-                data:$('#register').serialize()+'&'+$('#code').serialize(),
-                success:function(res){
-                    console.log(res)
-                    console.log(res)
-                    if(res.success) {
-                        $('#register').hide();
-                        $('#code').hide();
-                        $('#message').show();
-                    } else {
-                        $('#codeMessage').text(res.status);
-                        if(res.limitExceed) {
-                            $('#codeForm').hide();
-                        }
-                    }
-                },
-                error:function(res){
-                    console.log(res)
-                    $('#registerMessage').text(res.responseJSON.status);
-                }
-            });
-        });
-    </script>
+    <script src="./pushnotifications.js"></script>
 </html>

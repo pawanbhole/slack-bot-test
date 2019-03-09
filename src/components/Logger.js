@@ -24,6 +24,8 @@ export default class Logger {
         new transports.File({ filename: 'error.log', level: 'error' })
       ]
     });
+    console.log('this.winstonLogger.levels')
+    console.log(this.winstonLogger.levels)
   }
 
   log(level, message, ...objects) {
