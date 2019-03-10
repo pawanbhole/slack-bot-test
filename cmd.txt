@@ -1,0 +1,59 @@
+----toregenerate aptu token
+
+https://slack.com/oauth/authorize?client_id=570140488983.568981029523&scope=bot
+
+
+
+
+-------To start ngrok in background
+
+
+nohup ./ngrok http -host-header=rewrite 13.57.205.227:80  > /dev/null &
+
+curl http://localhost:4040/api/tunnels
+
+
+
+
+
+-------To start ngrok tunnels
+
+
+nohup ./ngrok start --all  > /dev/null &
+
+curl http://localhost:4040/api/tunnels
+
+
+
+-----to run multiple tunnels
+in file ~/.ngrok2/ngrok.yml
+
+
+authtoken: 5HmAWwzDdkYp8CdzDQMDS_4BGwsK7AdMssLnSttZEeh
+tunnels:
+  couponhunt:
+    proto: http
+    addr: 80
+  slackbot:
+    proto: http
+    addr: 3000
+
+
+-----to run app in background
+
+cd slack-bot-test
+
+sudo nohup npm start &
+
+
+
+
+-- to get all processes
+
+ps aux
+
+
+---to kill processes
+
+kill -9 <pid>
+
