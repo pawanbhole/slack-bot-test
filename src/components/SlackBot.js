@@ -14,7 +14,7 @@ export default class SlackBot {
 		this.i18n = i18n;
 		this.userManager = new UserManager(logger);
 		this.channelManager = new ChannelManager(logger);
-		this.registrationManager = new RegistrationManager(logger, this.userManager, this.channelManager);
+		this.registrationManager = new RegistrationManager(logger, this.userManager, this.channelManager, i18n);
 		var bot_options = {
 		    clientId: process.env.clientId,
 		    clientSecret: process.env.clientSecret,
@@ -157,6 +157,8 @@ export default class SlackBot {
         webserver.post('/slackbot/register-token', (req, res) => {
         	this.registrationManager.registerTokenHandler(req, res);
         });
+
+        //webserver.use('/', express.static('/Users/pawan/Documents/aisera/botserver/slack-mention-notifier/build'))
         webserver.use('/', express.static('./static'))
     }
 }

@@ -114,9 +114,13 @@ export default class UserManager {
 	}
 
 	findInMap(userMap, userId, email) {
+		const trimmedUserName = userId ? userId.trim() : userId;
+		const trimmedEmail = email ? email.trim() : email;
 		for(let index in userMap) {
 			const member = userMap[index];
-			if((userId || email) && (!userId || userId == member.id) && (!email || email == member.profile.email)) {
+			if((trimmedUserName || trimmedEmail) 
+				&& (!trimmedUserName || trimmedUserName == member.real_name) 
+				&& (!trimmedEmail || trimmedEmail == member.profile.email)) {
 				return member;
 			}
 		}

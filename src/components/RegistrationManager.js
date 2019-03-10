@@ -11,10 +11,11 @@ let lastAccessToken;
  */
 export default class RegistrationManager {
 
-	constructor(logger, userManager, channelManager) {
+	constructor(logger, userManager, channelManager, i18n) {
 		this.logger = logger;
 		this.userManager = userManager;
 		this.channelManager = channelManager;
+		this.i18n = i18n;
 		this.registrationStore = new RegistrationStore(logger);
 	}
 
@@ -143,28 +144,28 @@ export default class RegistrationManager {
 						}).catch((error) => {
 							this.logger.error('Error while persisting registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 				            res.status(500);
-				  			res.send({success:false, status: 'Error while authenticating user.'});
+				  			res.send({success:false, message: 'Error while authenticating user.'});
 						});
 					}).catch((error) => {
 						this.logger.error('Error while sending code to user id:'+user.id + ' Error:- '+JSON.stringify(error));
 			            res.status(500);
-			  			res.send({success:false, status: 'Error while sending code to the user.'});
+			  			res.send({success:false, message: 'Error while sending code to the user.'});
 					});
 				}).catch((error) => {
 					this.logger.error('Error while reading registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 		            res.status(500);
-		  			res.send({success:false, status: 'Error while authenticating user.'});
+		  			res.send({success:false, message: 'Error while authenticating user.'});
 				});
 			} else {
 				this.logger.error("User not found for id:"+req.body.userId+" or  email:" +req.body.email);
 	            res.status(404);
-	  			res.send({success:false, status: 'User not found.'});
+	  			res.send({success:false, message: 'User not found.'});
 			}
 		}).catch((error) => {
 			this.logger.error("Error while searching user info for id:"+req.body.userId+" or  email:"
 				+req.body.email + ' Error:- '+JSON.stringify(error));
             res.status(500);
-  			res.send({success:false, status: 'Error while searching the user.'});
+  			res.send({success:false, message: 'Error while searching the user.'});
 		});
 	}
 
@@ -183,14 +184,14 @@ export default class RegistrationManager {
 							this.logger.debug('validateSecretCodeHandler For '+userId);
 						}
 						let message, limitExceed = false, success = false;
-						if(req.body.code == registrationObject.secretCode) {
+						if(req.body.secretCode == registrationObject.secretCode) {
 							message ='Authentication successful.';
 							success = true;
-						} else if(registrationObject.secretCodeRetry > 3) {
+						} else if(registrationObject.secretCodeRetry > 2) {
 							registrationObject.secretCode = null;
 							registrationObject.secretCodeRetry = null;
 							this.logger.error("Registration retry exceeded the limit of user id:"+user.id);
-					        message = 'Registration retry exceeded the limit.';
+					        message = 'Registration retry limit exceeded.';
 					        limitExceed = true;
 						} else {
 							registrationObject.secretCodeRetry += 1;
@@ -203,28 +204,28 @@ export default class RegistrationManager {
 						}).catch((error) => {
 							this.logger.error('Error while persisting registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 				            res.status(500);
-				  			res.send({success:false, status: 'Error whilxe validating secret code.'});
+				  			res.send({success:false, message: 'Error whilxe validating secret code.'});
 						});
 					} else {
 						this.logger.error("Authentication process not started for user id:"+user.id);
 						res.status(400);
-					  	res.send({success:false, status: 'Authentication process not started.'});
+					  	res.send({success:false, message: 'Authentication process not started.'});
 					}
 				}).catch((error) => {
 					this.logger.error('Error while reading registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 		            res.status(500);
-		  			res.send({success:false, status: 'Error while authenticating user.'});
+		  			res.send({success:false, message: 'Error while authenticating user.'});
 				});
 			} else {
 				this.logger.error("User not found for id:"+req.body.userId+" or  email:" +req.body.email);
 	            res.status(404);
-	  			res.send({success:false, status: 'User not found.'});
+	  			res.send({success:false, message: 'User not found.'});
 			}
 		}).catch((error) => {
 			this.logger.error("Error while searching user info for id:"+req.body.userId+" or  email:"
 				+req.body.email + ' Error:- '+JSON.stringify(error));
             res.status(500);
-  			res.send({success:false, status: 'Error while searching the user.'});
+  			res.send({success:false, message: 'Error while searching the user.'});
 		});
 	}
 
@@ -238,7 +239,7 @@ export default class RegistrationManager {
 			if(user) {
 				const userId = user.id;
 				this.registrationStore.get(userId).then((registrationObject) => {
-					if(registrationObject && registrationObject.secretCode && req.body.code == registrationObject.secretCode && req.body.token) {
+					if(registrationObject && registrationObject.secretCode && req.body.secretCode == registrationObject.secretCode && req.body.token) {
 						if(this.logger.isDebugEnabled()) {
 							this.logger.debug('registerTokenHandler For '+userId);
 						}
@@ -252,22 +253,22 @@ export default class RegistrationManager {
 						}).catch((error) => {
 							this.logger.error('Error while persisting registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 				            res.status(500);
-				  			res.send({success:false, status: 'Error while validating secret code.'});
+				  			res.send({success:false, message: 'Error while validating secret code.'});
 						});
 					} else {
 						this.logger.error("Authentication process not started or incomplete for user id:"+user.id);
 						res.status(400);
-					  	res.send({success:false, status: 'Authentication process not started or incomplete.'});
+					  	res.send({success:false, message: 'Authentication process not started or incomplete.'});
 					}
 				}).catch((error) => {
 					this.logger.error('Error while reading registrationObject for user id:'+user.id + ' Error:- '+JSON.stringify(error));
 		            res.status(500);
-		  			res.send({success:false, status: 'Error while authenticating user.'});
+		  			res.send({success:false, message: 'Error while authenticating user.'});
 				});
 			} else {
 				this.logger.error("User not found for id:"+req.body.userId+" or  email:" +req.body.email);
 	            res.status(404);
-	  			res.send({success:false, status: 'User not found.'});
+	  			res.send({success:false, message: 'User not found.'});
 			}
 		}).catch((error) => {
 			this.logger.error("Error while searching user info for id:"+req.body.userId+" or  email:"
@@ -280,7 +281,7 @@ export default class RegistrationManager {
 	sendSecretCodeToUser(user, secretCode) {
 		return new Promise((resolve, reject) => {
 			this.channelManager.openIMChannel(user.id).then((channelId) => {
-				const secretCodeText = "Your rgistration code is "+secretCode;
+				const secretCodeText = this.i18n.localized('your_secret_code_is',{secretCode});
 	        	this.channelManager.sendMessage(channelId, secretCodeText).then((message) => {
 		            resolve(message);
 				}).catch((error) => {
