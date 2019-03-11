@@ -19,6 +19,9 @@ export default class I18n {
     });
   }
 
+  /*
+   * Returns the localized text against the key. 
+   */
   localized(key, options) {
     return i18next.t(key, options);
   }

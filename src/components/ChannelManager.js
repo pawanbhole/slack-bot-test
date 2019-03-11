@@ -1,8 +1,9 @@
 import request from 'request-promise';
 let CHANNEL_CACHE = {};
 const GET_CHANNEL_CALL_IN_PROGRESS = {};
+
 /*
- * Class to ahndle user operations
+ * Class to access channel data
  */
 export default class ChannelManager {
 
@@ -10,6 +11,7 @@ export default class ChannelManager {
 	constructor(logger) {
 		this.logger = logger;
 	}
+
 	/*
 	 * this function returns the promise object which resolve to channel objct.
 	 *  1) First it checks if channel present in cache, if yes then returns the resolved promise with channel as resolved value
@@ -18,10 +20,10 @@ export default class ChannelManager {
 	 */
 	get(channelId) {
 		if(CHANNEL_CACHE[channelId] != null) {
-			//user in cache
+			//channel in cache
 			return Promise.resolve(CHANNEL_CACHE[channelId]);
 		} else if(GET_CHANNEL_CALL_IN_PROGRESS[channelId]) {
-			//user call in progress
+			//channel call in progress
 			return GET_CHANNEL_CALL_IN_PROGRESS[channelId];
 		} else {
 			//Calling API to fetch channel info
@@ -88,10 +90,10 @@ export default class ChannelManager {
 	}
 
 	/*
-	 * this function  sends the message to the user on specified channel.
+	 * this function sends the message to the user on specified channel.
 	 */
 	sendMessage(channel, text) {
-		//Calling API to create IM 
+		//Calling API to send message 
 		const options = {
 			url: 'https://slack.com/api/chat.postMessage',
 			qs: {

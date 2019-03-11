@@ -8,10 +8,10 @@ const { combine, timestamp, label, printf } = format;
 export default class Logger {
 
   constructor() {
+    //formatter for logs
     const myFormat = printf(({ level, message, label, timestamp }) => {
       return `${timestamp} [${label}] ${level}: ${message}`;
     });
-
     this.winstonLogger = createLogger({
       level: process.env.logLevel || 'info',
       format: combine(
@@ -24,8 +24,6 @@ export default class Logger {
         new transports.File({ filename: 'error.log', level: 'error' })
       ]
     });
-    console.log('this.winstonLogger.levels')
-    console.log(this.winstonLogger.levels)
   }
 
   log(level, message, ...objects) {
@@ -79,5 +77,4 @@ export default class Logger {
   isSillyEnabled() {
     return this.winstonLogger.levels[this.winstonLogger.level] >= this.winstonLogger.levels['silly'];
   }
-
 }

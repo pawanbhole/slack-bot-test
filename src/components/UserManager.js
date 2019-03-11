@@ -3,7 +3,7 @@ let USERS_CACHE = {};
 const GET_USER_CALL_IN_PROGRESS = {};
 const RELOAD_USER_CALL_IN_PROGRESS = {};
 /*
- * Class to ahndle user operations
+ * Class to handle user operations
  */
 export default class UserManager {
 

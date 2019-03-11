@@ -5,7 +5,9 @@ import serviceAccountKey from '../service-account.json';
 
 const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
 
+//last access token of google firebase api. Expires after one hour.
 let lastAccessToken;
+
 /*
  * Class to handle registration
  */
@@ -23,15 +25,15 @@ export default class RegistrationManager {
 		return request(options);
 	}
 
+	/*
+	 * Returns the promise which resolves to token if user is registered. Else resolves to false.
+	 */
 	isRegisteredForNotifications(userId) {
 		if(this.logger.isDebugEnabled()) {
 			this.logger.debug("Checking if "+userId+" registered for notifications.");
 		}
 		return new Promise((resolve, reject) => {
 			this.registrationStore.get(userId).then((registration) => {
-				if(this.logger.isDebugEnabled()) {
-					this.logger.debug("registration object of "+userId+":"+JSON.stringify(registration));
-				}
 				if(registration && registration.tokens) {
 					if(this.logger.isDebugEnabled()) {
 						this.logger.debug(userId+" registered for notifications.");
@@ -49,26 +51,29 @@ export default class RegistrationManager {
 		});
 	}
 
+
+	/*
+	 * Returns the promise which resolves to the access token. It also cache the access token which is refreshed after one hour.
+	 */
 	getAccessToken() {
 	  return new Promise(function(resolve, reject) {
+	  	//check the timestamp. if token older than one hour refresh it.
 	  	if(lastAccessToken && lastAccessToken.timestamp > ((new Date()).getTime()-3600000)) {
 		      resolve(lastAccessToken.access_token);
 		} else {
-		    var jwtClient = new JWT(
-		      serviceAccountKey.client_email,
-		      null,
-		      serviceAccountKey.private_key,
-		      SCOPES,
-		      null
-		    );
+			var jwtClient = new JWT(
+				serviceAccountKey.client_email,
+				null,
+				serviceAccountKey.private_key,
+				SCOPES,
+				null);
 		    jwtClient.authorize(function(err, tokens) {
-		      if (err) {
-		        reject(err);
-		        return;
-		      }
-		      lastAccessToken = {access_token:tokens.access_token, 
-		      	timestamp: (new Date).getTime()};
-		      resolve(lastAccessToken.access_token);
+		    	if (err) {
+		    		reject(err);
+		    		return;
+		    	}
+		    	lastAccessToken = {access_token:tokens.access_token, timestamp: (new Date).getTime()};
+		      	resolve(lastAccessToken.access_token);
 		    });
 		}
 	  });
@@ -109,6 +114,11 @@ export default class RegistrationManager {
 		});
 	}
 
+
+	/*
+	 * POST REST api handler which accepts the user name or email and respond back if it matches with some user. 
+	 * It also send the 4 digit pin to slack account of that user.
+	 */
 	authenticateUserHandler(req, res) {
         this.userManager.find(req.body.userId, req.body.email).then((user) => {
 			if(this.logger.isSillyEnabled()) {
@@ -128,12 +138,16 @@ export default class RegistrationManager {
 						if(this.logger.isDebugEnabled()) {
 							this.logger.debug('authenticateUserHandler For '+userId+' registrationObject does not exist.');
 						}
+						//If this is first time user is registering for notifications then there wont be any record in database.
+						//So if registrationObjectNew is true then create funct of store will be called. else update.
 						registrationObjectNew = true;
 						registrationObject = {};
 					}
+					//Random 4 digit secret code
 					const secretCode = (Math.floor(Math.random() * 10000) + 10000).toString().substr(1);
 					registrationObject.secretCode = secretCode;
 					registrationObject.secretCodeRetry = 0;
+					//Secret code is sent o slack account of the user
 					this.sendSecretCodeToUser(user, secretCode).then(() => { 
 						if(this.logger.isDebugEnabled()) {
 							this.logger.debug('authenticateUserHandler For '+userId+' secret code sent.');
@@ -170,7 +184,10 @@ export default class RegistrationManager {
 	}
 
 
-
+	/*
+	 * POST REST api handler which accepts the user name or email snf secretCOde and then respond back if the code is vaild or not. 
+	 * It allows configurable number retries default to 3.
+	 */
 	validateSecretCodeHandler(req, res) {
         this.userManager.find(req.body.userId, req.body.email).then((user) => {
 			if(this.logger.isSillyEnabled()) {
@@ -184,10 +201,14 @@ export default class RegistrationManager {
 							this.logger.debug('validateSecretCodeHandler For '+userId);
 						}
 						let message, limitExceed = false, success = false;
+						let secterCodeRetryMaxCount = process.env.secterCodeRetryMaxCount;
+						if(secterCodeRetryMaxCount === null || secterCodeRetryMaxCount === undefined || secterCodeRetryMaxCount < 0) {
+							secterCodeRetryMaxCount = 3; //default to 3 max retries
+						}
 						if(req.body.secretCode == registrationObject.secretCode) {
 							message ='Authentication successful.';
 							success = true;
-						} else if(registrationObject.secretCodeRetry > 2) {
+						} else if(registrationObject.secretCodeRetry >= secterCodeRetryMaxCount) {
 							registrationObject.secretCode = null;
 							registrationObject.secretCodeRetry = null;
 							this.logger.error("Registration retry exceeded the limit of user id:"+user.id);
@@ -231,6 +252,9 @@ export default class RegistrationManager {
 
 
 
+	/*
+	 * POST REST api handler which accepts the user name or email, secretCode and firebase messaging token and stores it in database. 
+	 */
 	registerTokenHandler(req, res) {
         this.userManager.find(req.body.userId, req.body.email).then((user) => {
 			if(this.logger.isSillyEnabled()) {
@@ -278,6 +302,10 @@ export default class RegistrationManager {
 		});
 	}
 
+
+	/*
+	 * Returns the promise which resolves once message is sent to user.
+	 */
 	sendSecretCodeToUser(user, secretCode) {
 		return new Promise((resolve, reject) => {
 			this.channelManager.openIMChannel(user.id).then((channelId) => {

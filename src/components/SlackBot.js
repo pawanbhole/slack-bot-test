@@ -5,7 +5,7 @@ import ChannelManager from './ChannelManager';
 import RegistrationManager from './RegistrationManager';
 
 /*
- * Class to ahndle user operations
+ * Slack bot class.
  */
 export default class SlackBot {
 
@@ -36,13 +36,17 @@ export default class SlackBot {
 		    this.logger.info("Bot ready to receive messages.")
 		});
 
+		//Listening to all message events.
 		controller.hears('.*','direct_message,direct_mention,mention,ambient', (bot, message) => {
-		  this.logger.debug('direct_message', message);
-		  this.checkIfUserMentioned(message, bot);
-		  //bot.reply(message,'Howdy!');
+			this.logger.debug('direct_message', message);
+			this.checkIfUserMentioned(message, bot);
 		});
 	}
 
+	/*
+	 * It checks if any user is mentioned in current message by using reguler expression. 
+	 * If user is mentioned then it checks if that user has registered for notifications. If registered then sends the notification.
+	 */
 	checkIfUserMentioned(message, bot) {
 		const text = message.text;
 		if(text) {
@@ -51,6 +55,7 @@ export default class SlackBot {
 				this.logger.silly('message:-' + text+' patterns:'+ JSON.stringify(matchedUsers));
 			}
 			for(let userMention in matchedUsers) {
+				//trim '<@' and '>'
 				const mentionedUserId = matchedUsers[userMention].substr(2, matchedUsers[userMention].length - 3);
 				const mentioningUserId = message.user;
 				const channelId = message.channel;
@@ -58,6 +63,7 @@ export default class SlackBot {
 					this.logger.debug('mentioningUserId:-' + mentioningUserId + ' mentionedUserId:-'+ mentionedUserId);
 				}
 				if(mentioningUserId != mentionedUserId) {
+					//parallely calling slack API to retrieve user and channe info.
 					Promise.all([
 						this.userManager.get(mentioningUserId), 
 						this.userManager.get(mentionedUserId), 
@@ -82,6 +88,10 @@ export default class SlackBot {
 		}
 	}
 
+
+	/*
+	 * It checks if that user has registered for notifications. If registered then sends the notification.
+	 */
 	notifyIfSubscribed(mentioningUser, mentionedUser, channel, message, bot) {
 		if(this.logger.isDebugEnabled()) {
 			this.logger.debug(mentioningUser.name + ' was looking for '+ mentionedUser.name);
@@ -102,6 +112,8 @@ export default class SlackBot {
 					tokens.forEach((token) => {
 						notifyUserForMentionPromises.push(this.registrationManager.notifyUserForMention(notificationHeader, notificationMsg, token));
 					});
+					//it is possible that user has revoked the notification permission. So call for sending notification could fail.
+					//But if user has subscribed from multiple browsers then if atleast one call passes then we can assume that user is notified.
 					this.afterAtleastOneSuccess(notifyUserForMentionPromises).then((notification) => {
 						//TODO we can remove the tokens for which notification is failed
 						bot.reply(message, replyMsg);
@@ -119,6 +131,11 @@ export default class SlackBot {
 		});
 	}
 
+
+	/*
+	 * This functions takes the multiple promises adn return one promise which is resolved if atleast one promise is resolved. 
+	 * Promise is rejected only when all promises are rejected.
+	 */
 	afterAtleastOneSuccess(promises) {
 		let successCount = 0, errorCount = 0;
 		const totalPromises = promises.length;
@@ -148,7 +165,12 @@ export default class SlackBot {
 		});
 	}
 
+
+	/*
+	 * We are using sme express server started by botkit to host registration API, notification react widget and dummy website.
+	 */
 	createWebhookForNotification(webserver) {
+		//Registration API
         webserver.post('/slackbot/authenticate', (req, res) => {
         	this.registrationManager.authenticateUserHandler(req, res);
         });
@@ -159,6 +181,7 @@ export default class SlackBot {
         	this.registrationManager.registerTokenHandler(req, res);
         });
 
+        //Dummy website and registration widget
         //webserver.use('/', express.static('/Users/pawan/Documents/aisera/botserver/slack-mention-notifier/build'))
         webserver.use('/', express.static('./static'))
     }

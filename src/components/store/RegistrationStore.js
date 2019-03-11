@@ -1,26 +1,12 @@
 import DataStore from './DataStore';
 
 /*
- * Class to database access
+ * Class to access registration data
  */
-export default class RegistrationStore {
-
+export default class RegistrationStore extends DataStore {
 
 	constructor(logger) {
+		super('registrations', logger);
 		this.logger = logger;
-		this.dataStore = new DataStore('registrations', logger);
-	}
-
-	create(id, obj) {
-		return this.dataStore.create(id, obj);
-	}
-
-
-	update(id, obj) {
-		return this.dataStore.update(id, obj);
-	}
-
-	get(id) {
-		return this.dataStore.get(id);
 	}
 }
