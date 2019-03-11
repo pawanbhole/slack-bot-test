@@ -13,7 +13,6 @@ export default class SlackBot {
 		this.logger = logger;
 		this.i18n = i18n;
 		this.userManager = new UserManager(logger);
-		this.userManager.getAccessToken();
 		this.channelManager = new ChannelManager(logger);
 		this.registrationManager = new RegistrationManager(logger, this.userManager, this.channelManager, i18n);
 		var bot_options = {
