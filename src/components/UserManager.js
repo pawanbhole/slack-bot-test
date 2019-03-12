@@ -29,7 +29,7 @@ export default class UserManager {
 			const options = {
 				url: 'https://slack.com/api/users.info',
 				qs: {
-					token: process.env.apiToken,
+					token: process.env.apiToken,  //apiToken is set by user_registration on ./login call
 					user: userId,
 					include_locale: true
 				}

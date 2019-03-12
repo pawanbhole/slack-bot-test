@@ -15,7 +15,16 @@
     "i18next": "^15.0.6",
     "i18next-sync-fs-backend": "^1.1.0",
     "request-promise": "^4.2.4",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "botkit-storage-mongo": "^1.0.6",
+    "cookie-parser": "^1.4.3",
+    "debug": "^2.3.3",
+    "express": "^4.14.0",
+    "express-hbs": "^1.0.4",
+    "node-env-file": "^0.1.8",
+    "querystring": "^0.2.0",
+    "request": "^2.79.0",
+    "wordfilter": "^0.2.6"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",

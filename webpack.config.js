@@ -20,7 +20,8 @@ module.exports = function() {
 			'google-auth-library' : "commonjs google-auth-library", 
 			'express' : "commonjs express",
 			'botkit' : "commonjs botkit", 
-			'request-promise': "commonjs request-promise"
+			'request-promise': "commonjs request-promise",
+			'handlebars': 'commonjs handlebars'
 		},
 		plugins: [
 			new Dotenv()
