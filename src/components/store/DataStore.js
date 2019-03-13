@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import serviceAccountKey from '../../service-account.json';
+const serviceAccountKey = process.env.service_account;
 
 /*
  * Class to firebase database access

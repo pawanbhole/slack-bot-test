@@ -1,7 +1,7 @@
 import RegistrationStore from './store/RegistrationStore';
 import request from 'request-promise';
 import {JWT}  from 'google-auth-library';
-import serviceAccountKey from '../service-account.json';
+const serviceAccountKey = process.env.service_account;
 
 const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
 
