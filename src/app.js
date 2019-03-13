@@ -1,8 +1,6 @@
 
 if(!process.env.secretsFilePath) {
-	throw new Error("process.env.secretsFilePath not defined");
-} else {
-	console.log(process.env.secretsFilePath);
+	process.env.secretsFilePath='/home/ec2-user/slack/secrets.json';
 }
 var fs = require('fs');
 var secrets = JSON.parse(fs.readFileSync(process.env.secretsFilePath, 'utf8'));
