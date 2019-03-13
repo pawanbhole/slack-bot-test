@@ -1,5 +1,4 @@
 import admin from 'firebase-admin';
-const serviceAccountKey = process.env.service_account;
 
 /*
  * Class to firebase database access
@@ -12,6 +11,7 @@ export default class DataStore {
 	constructor(store, logger) {
 		this.logger = logger;
 		this.store = store;
+		const serviceAccountKey = global.service_account;
 		admin.initializeApp({
 		  credential: admin.credential.cert(serviceAccountKey)
 		});

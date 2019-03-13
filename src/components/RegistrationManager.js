@@ -1,7 +1,6 @@
 import RegistrationStore from './store/RegistrationStore';
 import request from 'request-promise';
 import {JWT}  from 'google-auth-library';
-const serviceAccountKey = process.env.service_account;
 
 const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
 
@@ -18,6 +17,8 @@ export default class RegistrationManager {
 		this.userManager = userManager;
 		this.channelManager = channelManager;
 		this.i18n = i18n;
+
+		this.serviceAccountKey = global.service_account;
 		this.registrationStore = new RegistrationStore(logger);
 	}
 
@@ -56,18 +57,18 @@ export default class RegistrationManager {
 	 * Returns the promise which resolves to the access token. It also cache the access token which is refreshed after one hour.
 	 */
 	getAccessToken() {
-	  return new Promise(function(resolve, reject) {
+	  return new Promise((resolve, reject) => {
 	  	//check the timestamp. if token older than one hour refresh it.
 	  	if(lastAccessToken && lastAccessToken.timestamp > ((new Date()).getTime()-3600000)) {
 		      resolve(lastAccessToken.access_token);
 		} else {
 			var jwtClient = new JWT(
-				serviceAccountKey.client_email,
+				this.serviceAccountKey.client_email,
 				null,
-				serviceAccountKey.private_key,
+				this.serviceAccountKey.private_key,
 				SCOPES,
 				null);
-		    jwtClient.authorize(function(err, tokens) {
+		    jwtClient.authorize((err, tokens) => {
 		    	if (err) {
 		    		reject(err);
 		    		return;
