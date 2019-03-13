@@ -2,6 +2,8 @@ import SlackBot from './components/SlackBot';
 import Logger from './components/Logger';
 import I18n from './components/I18n';
 require('./components/ErrorToJSONPolyfill');
+
+console.log(process.env);
 if(!process.env.secretsFilePath) {
 	throw new Error("process.env.secretsFilePath not defined");
 } else {
