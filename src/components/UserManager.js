@@ -118,7 +118,9 @@ export default class UserManager {
 		const trimmedEmail = email ? email.trim().toUpperCase() : '';
 		for(let index in userMap) {
 			const member = userMap[index];
-			if((trimmedUserName || trimmedEmail) 
+			if((trimmedUserName || trimmedEmail)
+				&& member.real_name
+				&& member.profile.email
 				&& (!trimmedUserName || trimmedUserName == member.real_name.toUpperCase()) 
 				&& (!trimmedEmail || trimmedEmail == member.profile.email.toUpperCase())) {
 				return member;
