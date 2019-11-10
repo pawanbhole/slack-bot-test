@@ -1,20 +1,15 @@
 import Botkit from 'botkit';
 import express from 'express';
-import UserManager from './UserManager';
 import ChannelManager from './ChannelManager';
-import RegistrationManager from './RegistrationManager';
+import UserManager from './UserManager';
 
 /*
  * Slack bot class.
  */
 export default class SlackBot {
 
-  constructor(logger, i18n) {
+  constructor(logger) {
     this.logger = logger;
-    this.i18n = i18n;
-    this.userManager = new UserManager(logger);
-    this.channelManager = new ChannelManager(logger);
-    this.registrationManager = new RegistrationManager(logger, this.userManager, this.channelManager, i18n);
     var bot_options = {
         clientId: process.env.clientId,
         clientSecret: process.env.clientSecret,
@@ -23,8 +18,9 @@ export default class SlackBot {
         scopes: ['bot'],
         logger
     };
-
-    bot_options.json_file_store = process.env.fileStore; 
+    this.channelManager = new ChannelManager(logger);
+    this.userManager = new UserManager(logger);
+    bot_options.json_file_store = process.env.fileStore;
     var controller = Botkit.slackbot(bot_options);
     controller.startTicking();
 
@@ -38,134 +34,12 @@ export default class SlackBot {
     // Send an onboarding message when a new team joins
     require('../slackcomponents/onboarding.js')(controller);
 
-    this.createWebhookForNotification(controller.webserver);
+    this.createWebhook(controller.webserver);
     
     //Listening to all message events.
     controller.hears('.*','direct_message,direct_mention,mention,ambient', (bot, message) => {
       this.logger.debug('direct_message', message);
-      this.checkIfUserMentioned(message, bot);
-    });
-  }
-
-  /*
-   * It checks if any user is mentioned in current message by using reguler expression. 
-   * If user is mentioned then it checks if that user has registered for notifications. If registered then sends the notification.
-   */
-  checkIfUserMentioned(message, bot) {
-    const text = message.text;
-    if(text) {
-      const matchedUsers = text.match(/<@\w*>/g);
-      if(this.logger.isSillyEnabled()) {
-        this.logger.silly('message:-' + text+' patterns:'+ JSON.stringify(matchedUsers));
-      }
-      for(let userMention in matchedUsers) {
-        //trim '<@' and '>'
-        const mentionedUserId = matchedUsers[userMention].substr(2, matchedUsers[userMention].length - 3);
-        const mentioningUserId = message.user;
-        const channelId = message.channel;
-        if(this.logger.isDebugEnabled()) {
-          this.logger.debug('mentioningUserId:-' + mentioningUserId + ' mentionedUserId:-'+ mentionedUserId);
-        }
-        if(mentioningUserId != mentionedUserId) {
-          //parallely calling slack API to retrieve user and channe info.
-          Promise.all([
-            this.userManager.get(mentioningUserId), 
-            this.userManager.get(mentionedUserId), 
-            this.channelManager.get(channelId)
-            ]).then((results) => {
-            if(this.logger.isSillyEnabled()) {
-              this.logger.silly('Output of get user and channel:-' + JSON.stringify(results));
-            }
-            this.notifyIfSubscribed(results[0], results[1], results[2], message, bot).then(() => {
-              if(this.logger.isDebugEnabled()) {
-                this.logger.debug(' mentionedUserId:-'+ mentionedUserId + ' notified.');
-              }
-            }).catch((error) => {
-              this.logger.error("Error while notifying user info for id "+mentionedUserId+' Error:- '+JSON.stringify(error));
-            });
-          }).catch((error) => {
-            this.logger.error("Error while fetching user info for id "+mentionedUserId+" or "
-              +mentioningUserId + ' Error:- '+JSON.stringify(error));
-          });
-        }
-      }
-    }
-  }
-
-
-  /*
-   * It checks if that user has registered for notifications. If registered then sends the notification.
-   */
-  notifyIfSubscribed(mentioningUser, mentionedUser, channel, message, bot) {
-    if(this.logger.isDebugEnabled()) {
-      this.logger.debug(mentioningUser.name + ' was looking for '+ mentionedUser.name);
-    }
-    return new Promise((resolve, reject) => {
-      this.registrationManager.isRegisteredForNotifications(mentionedUser.id).then((tokens) => {
-        if(tokens && tokens.length > 0) {
-          const notificationMsg = this.i18n.localized('slack_mention', {from: mentioningUser.real_name, to: mentionedUser.real_name, channel: channel.name});
-          const notificationHeader = this.i18n.localized('slack_mention_header');
-          const replyMsg = this.i18n.localized('slack_reply', {from: mentioningUser.real_name, to: mentionedUser.real_name, channel: channel.name});
-          if(this.logger.isDebugEnabled()) {
-            this.logger.debug('notifying :'+mentionedUser.name+' : "'+notificationMsg+'"');
-          }
-          if(this.logger.isDebugEnabled()) {
-            this.logger.debug('replying :'+mentioningUser.name+' : "'+replyMsg+'"');
-          }
-          const notifyUserForMentionPromises = [];
-          tokens.forEach((token) => {
-            notifyUserForMentionPromises.push(this.registrationManager.notifyUserForMention(notificationHeader, notificationMsg, token));
-          });
-          //it is possible that user has revoked the notification permission. So call for sending notification could fail.
-          //But if user has subscribed from multiple browsers then if atleast one call passes then we can assume that user is notified.
-          this.afterAtleastOneSuccess(notifyUserForMentionPromises).then((notification) => {
-            //TODO we can remove the tokens for which notification is failed
-            bot.reply(message, replyMsg);
-            resolve(notification);
-          }).catch((error) => {
-            reject(error);
-          });
-        } else {
-          this.logger.debug("notifications not enabled by user :"+mentioningUser.name);
-          resolve();
-        }
-      }).catch((error) => {
-        reject(error);
-      });
-    });
-  }
-
-
-  /*
-   * This functions takes the multiple promises adn return one promise which is resolved if atleast one promise is resolved. 
-   * Promise is rejected only when all promises are rejected.
-   */
-  afterAtleastOneSuccess(promises) {
-    let successCount = 0, errorCount = 0;
-    const totalPromises = promises.length;
-    const errors = [];
-    return new Promise((resolve, reject) => {
-      promises.forEach((currentPromise) => {
-        currentPromise.then(() => {
-          successCount++;
-          if((successCount + errorCount) == totalPromises) {
-            resolve(successCount);  
-          }
-        }).catch((error) => {
-          if(this.logger.isSillyEnabled()) {
-            this.logger.silly('Optional promise failed with error: '+JSON.stringify(error));
-          }
-          errorCount++;
-          errors.push(error);
-          if((successCount + errorCount) == totalPromises) {
-            if(successCount > 0) {
-              resolve(successCount);  
-            } else {
-              reject(errors);
-            }
-          }
-        });
-      });
+      this.forwardMessage(message, bot);
     });
   }
 
@@ -173,21 +47,108 @@ export default class SlackBot {
   /*
    * We are using sme express server started by botkit to host registration API, notification react widget and dummy website.
    */
-  createWebhookForNotification(webserver) {
-    //Registration API
-        webserver.post('/slackbot/authenticate', (req, res) => {
-          this.registrationManager.authenticateUserHandler(req, res);
-        });
-        webserver.post('/slackbot/validate-secret-code', (req, res) => {
-          this.registrationManager.validateSecretCodeHandler(req, res);
-        });
-        webserver.post('/slackbot/register-token', (req, res) => {
-          this.registrationManager.registerTokenHandler(req, res);
-        });
-
-        //Dummy website and registration widget
-        //webserver.use('/', express.static('/Users/pawan/Documents/aisera/botserver/slack-mention-notifier/build'))
+  createWebhook(webserver) {
         webserver.use('/', express.static('./static'))
     }
+
+  /*
+   * It checks if any user is mentioned in current message by using reguler expression.
+   * If user is mentioned then it checks if that user has registered for notifications. If registered then sends the notification.
+   */
+  forwardMessage(message, bot) {
+    console.log("\n\n\nMessage:-" + JSON.stringify(message));
+    bot.reply(message, `Echo: ${ message.text }`);
+    //const cp =  this.channelManager.get(message.channel);
+    const up =  this.userManager.get(message.user);
+    Promise.all([up]).then((userInfos) => {
+        //console.log("\nchannleInfo:-" + JSON.stringify(channleInfo));
+        const userInfo = userInfos.length > 0 ? userInfos[0] : {};
+        console.log("\nuserInfo:-" + JSON.stringify(userInfo));
+
+        const payload = {
+            channelId: message.channel,
+            //channelName: channleInfo.channel.name,
+            userId:message.user,
+            username: userInfo.name,
+            time: message.ts,
+            message: message.text
+        };
+        console.log("\npayload:-" + JSON.stringify(payload));
+
+     }).catch((error) => {
+        console.error("error while forwarding message", error);
+     });
+  }
+
 }
 
+
+
+
+
+/*
+Sample message from hangout
+
+
+{
+  "token": "eNUMIzEmPY6dMB1NMM755z1b",
+  "team_id": "TPENYK07J",
+  "api_app_id": "AQ4KZULKT",
+  "event": {
+    "client_msg_id": "4bd9c192-a629-4ccc-87d9-0627c3527ffe",
+    "type": "message",
+    "text": "hi",
+    "user": "UQ3KV7PEU",
+    "ts": "1573400358.000800",
+    "team": "TPENYK07J",
+    "channel": "DQC4J14GL",
+    "event_ts": "1573400358.000800",
+    "channel_type": "im"
+  },
+  "type": "direct_message",
+  "event_id": "EvQCN0TU4D",
+  "event_time": 1573400358,
+  "authed_users": [
+    "UQ3KV7PEU"
+  ],
+  "raw_message": {
+    "token": "eNUMIzEmPY6dMB1NMM755z1b",
+    "team_id": "TPENYK07J",
+    "api_app_id": "AQ4KZULKT",
+    "event": {
+      "client_msg_id": "4bd9c192-a629-4ccc-87d9-0627c3527ffe",
+      "type": "message",
+      "text": "hi",
+      "user": "UQ3KV7PEU",
+      "ts": "1573400358.000800",
+      "team": "TPENYK07J",
+      "channel": "DQC4J14GL",
+      "event_ts": "1573400358.000800",
+      "channel_type": "im"
+    },
+    "type": "event_callback",
+    "event_id": "EvQCN0TU4D",
+    "event_time": 1573400358,
+    "authed_users": [
+      "UQ3KV7PEU"
+    ]
+  },
+  "_pipeline": {
+    "stage": "receive"
+  },
+  "client_msg_id": "4bd9c192-a629-4ccc-87d9-0627c3527ffe",
+  "text": "hi",
+  "user": "UQ3KV7PEU",
+  "ts": "1573400358.000800",
+  "team": "TPENYK07J",
+  "channel": "DQC4J14GL",
+  "event_ts": "1573400358.000800",
+  "channel_type": "im",
+  "events_api": true,
+  "match": [
+    "hi"
+  ]
+}
+
+
+*/

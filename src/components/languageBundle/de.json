@@ -1,8 +1,0 @@
-{
-	"translation" : {
-		"slack_mention": "{{from}} was looking for you on slack channel {{channel}}",
-		"slack_mention_header": "Slack mention",
-		"slack_reply": "Hey {{from}}, I have notified {{to}} that you were looking for him/her.",
-		"your_secret_code_is": "Your four digit registration code is {{secretCode}}."
-	}
-}
